@@ -59,6 +59,6 @@ Both run Bun natively. No bundling, no Deno, no cold start, no timeout limits.
 | All 30 operations | Yes | Yes | Yes |
 | Setup time | 5 min | 10 min | 15 min |
 
-**Note:** `gbrain serve --http` (built-in HTTP transport) is planned but not yet
-implemented. Currently, remote MCP requires a custom HTTP wrapper around `gbrain serve`.
-See [DEPLOY.md](DEPLOY.md) for details.
+**Note:** `gbrain serve --http` is the built-in Streamable HTTP transport. It
+listens on `0.0.0.0:8787/mcp` by default for remote access; use a tunnel or cloud
+host plus Bearer token auth. See [DEPLOY.md](DEPLOY.md) for details.

@@ -62,6 +62,7 @@ describe('E2E: MCP Tool Generation', () => {
     // Verify the server module loads without errors
     const mod = await import('../../src/mcp/server.ts');
     expect(typeof mod.startMcpServer).toBe('function');
+    expect(typeof mod.startHttpMcpServer).toBe('function');
     expect(typeof mod.handleToolCall).toBe('function');
   });
 });

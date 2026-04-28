@@ -20,7 +20,7 @@ No server, no tunnel, no token needed.
 ```
 Your AI client (Claude Desktop, Perplexity, etc.)
   → ngrok tunnel (https://YOUR-DOMAIN.ngrok.app)
-  → Your HTTP server (wraps gbrain serve)
+  → gbrain serve --http (0.0.0.0:8787)
   → Supabase Postgres (via pooler connection string)
 ```
 
@@ -31,16 +31,22 @@ This requires:
 
 ## Remote Setup
 
-### 1. Set up the tunnel
+### 1. Start the HTTP MCP server and tunnel
 
 See the [ngrok-tunnel recipe](../../recipes/ngrok-tunnel.md) for full setup.
 Quick version:
 
 ```bash
+gbrain serve --http
 brew install ngrok
 ngrok config add-authtoken YOUR_TOKEN
 ngrok http 8787 --url your-brain.ngrok.app  # Hobby tier for fixed domain
 ```
+
+`gbrain serve --http` listens on `0.0.0.0:8787` by default. Override with
+`--host`, `--port`, and `--path` if needed. HTTP MCP requires `Authorization:
+Bearer <token>`; for PGLite, set `GBRAIN_MCP_TOKEN` because the Postgres
+`access_tokens` table is not available.
 
 ### 2. Create access tokens
 
@@ -116,7 +122,6 @@ Remote servers must be added via Settings > Integrations, NOT
 | put_page | 100-500ms | Write + trigger search_vector update |
 | get_stats | < 100ms | Aggregate query |
 
-**Note:** `gbrain serve --http` (built-in HTTP transport) is planned but not yet
-implemented. Currently, remote MCP requires a custom HTTP wrapper. See the
-production deployment pattern in the [voice recipe](../../recipes/twilio-voice-brain.md)
-for a reference implementation.
+**Note:** `gbrain serve --http` uses MCP Streamable HTTP and defaults to
+`0.0.0.0:8787/mcp` for remote access. Keep it behind a trusted tunnel or network
+boundary and require Bearer tokens.
