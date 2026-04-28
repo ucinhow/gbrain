@@ -21,6 +21,52 @@ interface HttpMcpSession {
   transport: WebStandardStreamableHTTPServerTransport;
 }
 
+let httpRequestSeq = 0;
+
+function logHttp(message: string): void {
+  process.stderr.write(`[mcp-http] ${new Date().toISOString()} ${message}\n`);
+}
+
+function logTool(message: string): void {
+  process.stderr.write(`[mcp-tool] ${new Date().toISOString()} ${message}\n`);
+}
+
+function quoteLogValue(value: string): string {
+  return JSON.stringify(value).replace(/\s+/g, ' ');
+}
+
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  return forwarded
+    || request.headers.get('x-real-ip')
+    || request.headers.get('cf-connecting-ip')
+    || '-';
+}
+
+function shortSessionId(sessionId: string | null): string {
+  if (!sessionId) return '-';
+  return sessionId.length <= 12 ? sessionId : `${sessionId.slice(0, 8)}...`;
+}
+
+async function withHttpRequestLog(request: Request, handler: () => Promise<Response>): Promise<Response> {
+  const id = (++httpRequestSeq).toString(36);
+  const started = Date.now();
+  const url = new URL(request.url);
+  const session = shortSessionId(request.headers.get('mcp-session-id'));
+  const auth = bearerToken(request) ? 'present' : 'missing';
+  const ua = request.headers.get('user-agent') || '-';
+  logHttp(`request start id=${id} method=${request.method} path=${url.pathname} ip=${clientIp(request)} auth=${auth} session=${session} ua=${quoteLogValue(ua)}`);
+  try {
+    const response = await handler();
+    logHttp(`request end id=${id} status=${response.status} duration_ms=${Date.now() - started}`);
+    return response;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logHttp(`request error id=${id} duration_ms=${Date.now() - started} error=${quoteLogValue(msg)}`);
+    return jsonRpcError(500, -32603, msg);
+  }
+}
+
 /** Validate required params exist and have the expected type */
 function validateParams(op: Operation, params: Record<string, unknown>): string | null {
   for (const [key, def] of Object.entries(op.params)) {
@@ -56,8 +102,11 @@ function createMcpServer(engine: BrainEngine): Server {
   // Dispatch tool calls to operation handlers
   server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
     const { name, arguments: params } = request.params;
+    const started = Date.now();
+    logTool(`call start tool=${name || '<missing>'}`);
     const op = operations.find(o => o.name === name);
     if (!op) {
+      logTool(`call end tool=${name || '<missing>'} status=unknown_tool duration_ms=${Date.now() - started}`);
       return { content: [{ type: 'text', text: `Error: Unknown tool: ${name}` }], isError: true };
     }
 
@@ -77,17 +126,21 @@ function createMcpServer(engine: BrainEngine): Server {
     const safeParams = params || {};
     const validationError = validateParams(op, safeParams);
     if (validationError) {
+      logTool(`call end tool=${name} status=invalid_params duration_ms=${Date.now() - started}`);
       return { content: [{ type: 'text', text: JSON.stringify({ error: 'invalid_params', message: validationError }, null, 2) }], isError: true };
     }
 
     try {
       const result = await op.handler(ctx, safeParams);
+      logTool(`call end tool=${name} status=ok duration_ms=${Date.now() - started}`);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (e: unknown) {
       if (e instanceof OperationError) {
+        logTool(`call end tool=${name} status=operation_error code=${e.code} duration_ms=${Date.now() - started}`);
         return { content: [{ type: 'text', text: JSON.stringify(e.toJSON(), null, 2) }], isError: true };
       }
       const msg = e instanceof Error ? e.message : String(e);
+      logTool(`call end tool=${name} status=error duration_ms=${Date.now() - started} error=${quoteLogValue(msg)}`);
       return { content: [{ type: 'text', text: `Error: ${msg}` }], isError: true };
     }
   });
@@ -178,6 +231,7 @@ export async function startHttpMcpServer(
     const session = sessions.get(sessionId);
     if (!session) return;
     sessions.delete(sessionId);
+    logHttp(`session close session=${shortSessionId(sessionId)} active_sessions=${sessions.size}`);
     await Promise.allSettled([
       session.transport.close(),
       session.server.close(),
@@ -192,73 +246,77 @@ export async function startHttpMcpServer(
     hostname: host,
     port,
     async fetch(request) {
-      const url = new URL(request.url);
+      return withHttpRequestLog(request, async () => {
+        const url = new URL(request.url);
 
-      if (url.pathname === '/health') {
-        return Response.json({ status: 'ok', service: 'gbrain-mcp', transport: 'streamable-http' });
-      }
-      if (url.pathname !== path) {
-        return new Response('Not Found\n', { status: 404 });
-      }
-      if (!['GET', 'POST', 'DELETE'].includes(request.method)) {
-        return jsonRpcError(405, -32000, 'Method not allowed.');
-      }
+        if (url.pathname === '/health') {
+          return Response.json({ status: 'ok', service: 'gbrain-mcp', transport: 'streamable-http' });
+        }
+        if (url.pathname !== path) {
+          return new Response('Not Found\n', { status: 404 });
+        }
+        if (!['GET', 'POST', 'DELETE'].includes(request.method)) {
+          return jsonRpcError(405, -32000, 'Method not allowed.');
+        }
 
-      const authError = await authenticateHttpRequest(engine, request);
-      if (authError) return authError;
+        const authError = await authenticateHttpRequest(engine, request);
+        if (authError) return authError;
 
-      const sessionId = request.headers.get('mcp-session-id') || undefined;
-      if (sessionId) {
-        const session = sessions.get(sessionId);
-        if (!session) return jsonRpcError(404, -32001, 'Session not found.');
+        const sessionId = request.headers.get('mcp-session-id') || undefined;
+        if (sessionId) {
+          const session = sessions.get(sessionId);
+          if (!session) return jsonRpcError(404, -32001, 'Session not found.');
+          try {
+            const response = await session.transport.handleRequest(request);
+            if (request.method === 'DELETE') await closeSession(sessionId);
+            return response;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            return jsonRpcError(500, -32603, msg);
+          }
+        }
+
+        if (request.method !== 'POST') {
+          return jsonRpcError(400, -32000, 'Missing MCP session ID. Send an initialize request first.');
+        }
+
+        let body: unknown;
         try {
-          const response = await session.transport.handleRequest(request);
-          if (request.method === 'DELETE') await closeSession(sessionId);
+          body = await request.clone().json();
+        } catch {
+          return jsonRpcError(400, -32700, 'Invalid JSON request body.');
+        }
+        if (!isInitializeRequest(body)) {
+          return jsonRpcError(400, -32000, 'No valid session ID provided. Send an initialize request first.');
+        }
+
+        const mcpServer = createMcpServer(engine);
+        const transport = new WebStandardStreamableHTTPServerTransport({
+          sessionIdGenerator: () => crypto.randomUUID(),
+          enableJsonResponse: true,
+          onsessioninitialized: (newSessionId) => {
+            sessions.set(newSessionId, { server: mcpServer, transport });
+            logHttp(`session init session=${shortSessionId(newSessionId)} active_sessions=${sessions.size}`);
+          },
+          onsessionclosed: async (closedSessionId) => {
+            await closeSession(closedSessionId);
+          },
+        });
+
+        try {
+          await mcpServer.connect(transport);
+          const response = await transport.handleRequest(request, { parsedBody: body });
+          if (transport.sessionId && !sessions.has(transport.sessionId)) {
+            sessions.set(transport.sessionId, { server: mcpServer, transport });
+            logHttp(`session init session=${shortSessionId(transport.sessionId)} active_sessions=${sessions.size}`);
+          }
           return response;
         } catch (e) {
+          await Promise.allSettled([transport.close(), mcpServer.close()]);
           const msg = e instanceof Error ? e.message : String(e);
           return jsonRpcError(500, -32603, msg);
         }
-      }
-
-      if (request.method !== 'POST') {
-        return jsonRpcError(400, -32000, 'Missing MCP session ID. Send an initialize request first.');
-      }
-
-      let body: unknown;
-      try {
-        body = await request.clone().json();
-      } catch {
-        return jsonRpcError(400, -32700, 'Invalid JSON request body.');
-      }
-      if (!isInitializeRequest(body)) {
-        return jsonRpcError(400, -32000, 'No valid session ID provided. Send an initialize request first.');
-      }
-
-      const mcpServer = createMcpServer(engine);
-      const transport = new WebStandardStreamableHTTPServerTransport({
-        sessionIdGenerator: () => crypto.randomUUID(),
-        enableJsonResponse: true,
-        onsessioninitialized: (newSessionId) => {
-          sessions.set(newSessionId, { server: mcpServer, transport });
-        },
-        onsessionclosed: async (closedSessionId) => {
-          await closeSession(closedSessionId);
-        },
       });
-
-      try {
-        await mcpServer.connect(transport);
-        const response = await transport.handleRequest(request, { parsedBody: body });
-        if (transport.sessionId && !sessions.has(transport.sessionId)) {
-          sessions.set(transport.sessionId, { server: mcpServer, transport });
-        }
-        return response;
-      } catch (e) {
-        await Promise.allSettled([transport.close(), mcpServer.close()]);
-        const msg = e instanceof Error ? e.message : String(e);
-        return jsonRpcError(500, -32603, msg);
-      }
     },
   });
 
