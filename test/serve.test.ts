@@ -25,7 +25,7 @@ describe('serve args', () => {
     delete process.env.GBRAIN_MCP_PORT;
     delete process.env.GBRAIN_MCP_PATH;
 
-    expect(parseServeArgs(['--http'])).toEqual({
+    expect(parseServeArgs([])).toEqual({
       http: true,
       host: '0.0.0.0',
       port: 8787,
@@ -47,7 +47,7 @@ describe('serve args', () => {
     process.env.GBRAIN_MCP_PORT = '9999';
     process.env.GBRAIN_MCP_PATH = '/custom-mcp';
 
-    expect(parseServeArgs(['--http'])).toEqual({
+    expect(parseServeArgs([])).toEqual({
       http: true,
       host: '0.0.0.0',
       port: 9999,
@@ -55,7 +55,15 @@ describe('serve args', () => {
     });
   });
 
+  test('uses stdio only when requested', () => {
+    expect(parseServeArgs(['--stdio'])).toMatchObject({ http: false });
+  });
+
+  test('rejects conflicting transport flags', () => {
+    expect(() => parseServeArgs(['--http', '--stdio'])).toThrow('Use either --http or --stdio');
+  });
+
   test('rejects invalid port', () => {
-    expect(() => parseServeArgs(['--http', '--port', '70000'])).toThrow('Invalid --port');
+    expect(() => parseServeArgs(['--port', '70000'])).toThrow('Invalid --port');
   });
 });

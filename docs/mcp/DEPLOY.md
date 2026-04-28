@@ -1,31 +1,31 @@
 # Deploy GBrain Remote MCP Server
 
-Access your brain from any device, any AI client. GBrain's MCP server runs locally
-via `gbrain serve` (stdio). For remote access, wrap it in an HTTP server behind a
-public tunnel.
+Access your brain from any device, any AI client. `gbrain serve` starts the
+Streamable HTTP MCP server by default on `0.0.0.0:8787`. For local stdio clients,
+use `gbrain serve --stdio`.
 
 ## Two Paths
 
 ### Local (zero setup)
 
 ```bash
-gbrain serve
+gbrain serve --stdio
 ```
 
 Works with Claude Code, Cursor, Windsurf, and any MCP client that supports stdio.
-No server, no tunnel, no token needed.
+No HTTP listener, no tunnel, no token needed.
 
 ### Remote (any device, any AI client)
 
 ```
 Your AI client (Claude Desktop, Perplexity, etc.)
   → ngrok tunnel (https://YOUR-DOMAIN.ngrok.app)
-  → gbrain serve --http (0.0.0.0:8787)
+  → gbrain serve (0.0.0.0:8787)
   → Supabase Postgres (via pooler connection string)
 ```
 
 This requires:
-1. A machine running `gbrain serve` behind an HTTP wrapper
+1. A machine running `gbrain serve`
 2. A public tunnel (ngrok, Tailscale, or cloud host)
 3. Bearer token auth for security
 
@@ -37,13 +37,13 @@ See the [ngrok-tunnel recipe](../../recipes/ngrok-tunnel.md) for full setup.
 Quick version:
 
 ```bash
-gbrain serve --http
+gbrain serve
 brew install ngrok
 ngrok config add-authtoken YOUR_TOKEN
 ngrok http 8787 --url your-brain.ngrok.app  # Hobby tier for fixed domain
 ```
 
-`gbrain serve --http` listens on `0.0.0.0:8787` by default. Override with
+`gbrain serve` listens on `0.0.0.0:8787` by default. Override with
 `--host`, `--port`, and `--path` if needed. HTTP MCP requires `Authorization:
 Bearer <token>`; for PGLite, set `GBRAIN_MCP_TOKEN` because the Postgres
 `access_tokens` table is not available.
@@ -122,6 +122,6 @@ Remote servers must be added via Settings > Integrations, NOT
 | put_page | 100-500ms | Write + trigger search_vector update |
 | get_stats | < 100ms | Aggregate query |
 
-**Note:** `gbrain serve --http` uses MCP Streamable HTTP and defaults to
+**Note:** `gbrain serve` uses MCP Streamable HTTP by default and listens on
 `0.0.0.0:8787/mcp` for remote access. Keep it behind a trusted tunnel or network
-boundary and require Bearer tokens.
+boundary and require Bearer tokens. Use `gbrain serve --stdio` for local stdio MCP.

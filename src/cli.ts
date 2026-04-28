@@ -721,7 +721,7 @@ ADMIN
   features [--json] [--auto-fix]     Scan usage + recommend unused features
   autopilot [--repo] [--interval N]  Self-maintaining brain daemon
   config [show|get|set] <key> [val]  Brain config
-  serve [--http] [--port 8787]       MCP server (stdio or HTTP; HTTP binds 0.0.0.0)
+  serve [--stdio] [--port 8787]      MCP server (HTTP by default; --stdio for stdio)
   call <tool> '<json>'               Raw tool invocation
   version                            Version info
   --tools-json                       Tool discovery (JSON)

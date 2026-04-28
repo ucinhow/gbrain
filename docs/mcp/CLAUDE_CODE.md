@@ -6,7 +6,7 @@
 claude mcp add gbrain -- gbrain serve
 ```
 
-That's it. Claude Code spawns `gbrain serve` as a stdio subprocess. No server, no
+That's it. Claude Code spawns `gbrain serve --stdio` as a stdio subprocess. No server, no
 tunnel, no token needed. Works with both PGLite and Supabase engines.
 
 ## Option 2: Remote (access from any machine)

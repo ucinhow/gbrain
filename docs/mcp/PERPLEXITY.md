@@ -28,4 +28,4 @@ Use my GBrain to search for [topic]
 
 - Perplexity Computer is available to Pro subscribers
 - Both the Perplexity Mac app and web version support MCP connectors
-- The Mac app also supports local MCP servers if you prefer `gbrain serve` (stdio)
+- The Mac app also supports local MCP servers if you prefer `gbrain serve --stdio`

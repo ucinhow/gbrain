@@ -65,12 +65,12 @@ aborts with `Aborted()` the first time it opens PGLite. Use `git clone + bun ins
 
 ### MCP server (Claude Code, Cursor, Windsurf)
 
-GBrain exposes 30+ MCP tools via stdio, or streamable HTTP with `gbrain serve --http` (default `0.0.0.0:8787/mcp` for remote access):
+GBrain exposes 30+ MCP tools via streamable HTTP by default (`gbrain serve`, `0.0.0.0:8787/mcp`) or stdio with `gbrain serve --stdio`:
 
 ```json
 {
   "mcpServers": {
-    "gbrain": { "command": "gbrain", "args": ["serve"] }
+    "gbrain": { "command": "gbrain", "args": ["serve", "--stdio"] }
   }
 }
 ```
@@ -80,7 +80,7 @@ Add to `~/.claude/server.json` (Claude Code), Settings > MCP Servers (Cursor), o
 ### Remote MCP (Claude Desktop, Cowork, Perplexity)
 
 ```bash
-gbrain serve --http
+gbrain serve
 ngrok http 8787 --url your-brain.ngrok.app
 bun run src/commands/auth.ts create "claude-desktop"
 claude mcp add gbrain -t http https://your-brain.ngrok.app/mcp -H "Authorization: Bearer TOKEN"
@@ -657,7 +657,7 @@ ADMIN
   gbrain doctor --fix [--dry-run]       Auto-fix DRY violations (delegate inlined rules to conventions)
   gbrain doctor --locks                 List idle-in-tx backends (57014 diagnostic, Postgres only)
   gbrain stats                          Brain statistics
-  gbrain serve [--http] [--port 8787]   MCP server (stdio or HTTP, binds 0.0.0.0)
+  gbrain serve [--stdio] [--port 8787]  MCP server (HTTP default, --stdio for stdio)
   gbrain integrations                   Integration recipe dashboard
   gbrain sources list|add|remove|...    Multi-source brain management (v0.18)
   gbrain dream [--dry-run] [--phase N]  One maintenance cycle then exit (cron-friendly)

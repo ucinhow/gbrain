@@ -14,6 +14,10 @@ function valueAfter(args: string[], flag: string): string | undefined {
 }
 
 export function parseServeArgs(args: string[]): ServeArgs {
+  if (args.includes('--http') && args.includes('--stdio')) {
+    throw new Error('Use either --http or --stdio, not both. HTTP is the default.');
+  }
+
   const portRaw = valueAfter(args, '--port') || process.env.GBRAIN_MCP_PORT || '8787';
   const port = Number(portRaw);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
@@ -21,7 +25,7 @@ export function parseServeArgs(args: string[]): ServeArgs {
   }
 
   return {
-    http: args.includes('--http'),
+    http: !args.includes('--stdio'),
     host: valueAfter(args, '--host') || process.env.GBRAIN_MCP_HOST || '0.0.0.0',
     port,
     path: valueAfter(args, '--path') || process.env.GBRAIN_MCP_PATH || '/mcp',

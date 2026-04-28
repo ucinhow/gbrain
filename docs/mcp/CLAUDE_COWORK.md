@@ -24,8 +24,8 @@ If you already have GBrain configured in Claude Desktop (via `gbrain serve`
 stdio or a remote integration), Cowork gets access automatically. Claude
 Desktop bridges local MCP servers into Cowork via its SDK layer.
 
-This means: if `gbrain serve` is running and configured in Claude Desktop,
-you don't need a separate server for Cowork.
+This means: if `gbrain serve --stdio` is configured in Claude Desktop, you don't
+need a separate server for Cowork.
 
 ## Which to use?
 
