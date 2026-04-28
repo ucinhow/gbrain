@@ -19,6 +19,12 @@ export async function runInit(args: string[]) {
   const manualUrl = urlIndex !== -1 ? args[urlIndex + 1] : null;
   const keyIndex = args.indexOf('--key');
   const apiKey = keyIndex !== -1 ? args[keyIndex + 1] : null;
+  const baseUrlIndex = args.includes('--base-url') ? args.indexOf('--base-url') : args.indexOf('--openai-base-url');
+  const openaiBaseUrl = baseUrlIndex !== -1 ? args[baseUrlIndex + 1] : null;
+  const anthropicKeyIndex = args.indexOf('--anthropic-key');
+  const anthropicApiKey = anthropicKeyIndex !== -1 ? args[anthropicKeyIndex + 1] : null;
+  const anthropicBaseUrlIndex = args.indexOf('--anthropic-base-url');
+  const anthropicBaseUrl = anthropicBaseUrlIndex !== -1 ? args[anthropicBaseUrlIndex + 1] : null;
   const pathIndex = args.indexOf('--path');
   const customPath = pathIndex !== -1 ? args[pathIndex + 1] : null;
 
@@ -47,7 +53,7 @@ export async function runInit(args: string[]) {
       }
     }
 
-    return initPGLite({ jsonOutput, apiKey, customPath });
+    return initPGLite({ jsonOutput, apiKey, openaiBaseUrl, anthropicApiKey, anthropicBaseUrl, customPath });
   }
 
   // Supabase/Postgres mode
@@ -66,7 +72,7 @@ export async function runInit(args: string[]) {
     databaseUrl = await supabaseWizard();
   }
 
-  return initPostgres({ databaseUrl, jsonOutput, apiKey });
+  return initPostgres({ databaseUrl, jsonOutput, apiKey, openaiBaseUrl, anthropicApiKey, anthropicBaseUrl });
 }
 
 /**
@@ -102,7 +108,14 @@ async function initMigrateOnly(opts: { jsonOutput: boolean }) {
   }
 }
 
-async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; customPath: string | null }) {
+async function initPGLite(opts: {
+  jsonOutput: boolean;
+  apiKey: string | null;
+  openaiBaseUrl: string | null;
+  anthropicApiKey: string | null;
+  anthropicBaseUrl: string | null;
+  customPath: string | null;
+}) {
   const dbPath = opts.customPath || join(homedir(), '.gbrain', 'brain.pglite');
   console.log(`Setting up local brain with PGLite (no server needed)...`);
 
@@ -115,6 +128,9 @@ async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; cu
       engine: 'pglite',
       database_path: dbPath,
       ...(opts.apiKey ? { openai_api_key: opts.apiKey } : {}),
+      ...(opts.openaiBaseUrl ? { openai_base_url: opts.openaiBaseUrl } : {}),
+      ...(opts.anthropicApiKey ? { anthropic_api_key: opts.anthropicApiKey } : {}),
+      ...(opts.anthropicBaseUrl ? { anthropic_base_url: opts.anthropicBaseUrl } : {}),
     };
     saveConfig(config);
 
@@ -143,7 +159,14 @@ async function initPGLite(opts: { jsonOutput: boolean; apiKey: string | null; cu
   }
 }
 
-async function initPostgres(opts: { databaseUrl: string; jsonOutput: boolean; apiKey: string | null }) {
+async function initPostgres(opts: {
+  databaseUrl: string;
+  jsonOutput: boolean;
+  apiKey: string | null;
+  openaiBaseUrl: string | null;
+  anthropicApiKey: string | null;
+  anthropicBaseUrl: string | null;
+}) {
   const { databaseUrl } = opts;
 
   // Detect Supabase direct connection URLs and warn about IPv6
@@ -198,6 +221,9 @@ async function initPostgres(opts: { databaseUrl: string; jsonOutput: boolean; ap
       engine: 'postgres',
       database_url: databaseUrl,
       ...(opts.apiKey ? { openai_api_key: opts.apiKey } : {}),
+      ...(opts.openaiBaseUrl ? { openai_base_url: opts.openaiBaseUrl } : {}),
+      ...(opts.anthropicApiKey ? { anthropic_api_key: opts.anthropicApiKey } : {}),
+      ...(opts.anthropicBaseUrl ? { anthropic_base_url: opts.anthropicBaseUrl } : {}),
     };
     saveConfig(config);
     console.log('Config saved to ~/.gbrain/config.json');

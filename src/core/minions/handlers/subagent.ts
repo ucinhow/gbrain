@@ -126,6 +126,7 @@ interface PersistedToolExec {
  */
 export function makeSubagentHandler(deps: SubagentDeps) {
   const engine = deps.engine;
+  const config = deps.config ?? loadConfig() ?? ({ engine: 'postgres' } as GBrainConfig);
   // sdk.messages IS the MessagesClient-shaped object. The v0.16.0 bug was
   // casting new Anthropic() (top level) to MessagesClient, but .create()
   // lives at sdk.messages.create. Assigning sdk.messages directly gets the
@@ -133,7 +134,6 @@ export function makeSubagentHandler(deps: SubagentDeps) {
   // site (subagent.ts invokes client.create(...) with client === sdk.messages).
   const makeAnthropic = deps.makeAnthropic ?? (() => new Anthropic());
   const client: MessagesClient = deps.client ?? makeAnthropic().messages;
-  const config = deps.config ?? loadConfig() ?? ({ engine: 'postgres' } as GBrainConfig);
   const rateLeaseKey = deps.rateLeaseKey ?? DEFAULT_RATE_KEY;
   const maxConcurrent = deps.maxConcurrent ?? DEFAULT_MAX_CONCURRENT;
   const leaseTtlMs = deps.leaseTtlMs ?? DEFAULT_LEASE_TTL_MS;

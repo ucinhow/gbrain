@@ -36,12 +36,15 @@ restart the shell or add the PATH export to the shell profile.
 Ask the user for these:
 
 ```bash
-export OPENAI_API_KEY=sk-...          # required for vector search
-export ANTHROPIC_API_KEY=sk-ant-...   # optional, improves search quality
+export OPENAI_API_KEY=sk-...                    # required for vector search
+export OPENAI_BASE_URL=https://api.openai.com/v1 # optional; set for OpenAI-compatible providers
+export ANTHROPIC_API_KEY=sk-ant-...             # optional, improves search quality
+export ANTHROPIC_BASE_URL=https://api.anthropic.com # optional; set for Anthropic-compatible proxies
 ```
 
-Save to shell profile or `.env`. Without OpenAI, keyword search still works.
-Without Anthropic, search works but skips query expansion.
+Save to shell profile, `.env`, or `~/.gbrain/config.json` using `openai_api_key`,
+`openai_base_url`, `anthropic_api_key`, and `anthropic_base_url`. Without OpenAI,
+keyword search still works. Without Anthropic, search works but skips query expansion.
 
 ## Step 3: Create the Brain
 

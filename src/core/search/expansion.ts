@@ -15,6 +15,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { loadConfig } from '../config.ts';
 
 const MAX_QUERIES = 3;
 const MIN_WORDS = 3;
@@ -24,6 +25,7 @@ let anthropicClient: Anthropic | null = null;
 
 function getClient(): Anthropic {
   if (!anthropicClient) {
+    loadConfig();
     anthropicClient = new Anthropic();
   }
   return anthropicClient;

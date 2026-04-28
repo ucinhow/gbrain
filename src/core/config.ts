@@ -28,7 +28,9 @@ export interface GBrainConfig {
   database_url?: string;
   database_path?: string;
   openai_api_key?: string;
+  openai_base_url?: string;
   anthropic_api_key?: string;
+  anthropic_base_url?: string;
   /**
    * Optional storage backend config (S3/Supabase/local). Shape matches
    * `StorageConfig` in `./storage.ts`. Typed as `unknown` here to avoid
@@ -36,6 +38,19 @@ export interface GBrainConfig {
    * validates the shape at runtime.
    */
   storage?: unknown;
+}
+
+function setEnvIfUnset(name: string, value: string | undefined): void {
+  if (value && !process.env[name]) process.env[name] = value;
+}
+
+export function applyProviderEnv(config: Pick<GBrainConfig,
+  'openai_api_key' | 'openai_base_url' | 'anthropic_api_key' | 'anthropic_base_url'
+>): void {
+  setEnvIfUnset('OPENAI_API_KEY', config.openai_api_key);
+  setEnvIfUnset('OPENAI_BASE_URL', config.openai_base_url);
+  setEnvIfUnset('ANTHROPIC_API_KEY', config.anthropic_api_key);
+  setEnvIfUnset('ANTHROPIC_BASE_URL', config.anthropic_base_url);
 }
 
 /**
@@ -59,13 +74,17 @@ export function loadConfig(): GBrainConfig | null {
     || (fileConfig?.database_path ? 'pglite' : 'postgres');
 
   // Merge: env vars override config file
-  const merged = {
+  const merged: GBrainConfig = {
     ...fileConfig,
     engine: inferredEngine,
     ...(dbUrl ? { database_url: dbUrl } : {}),
     ...(process.env.OPENAI_API_KEY ? { openai_api_key: process.env.OPENAI_API_KEY } : {}),
+    ...(process.env.OPENAI_BASE_URL ? { openai_base_url: process.env.OPENAI_BASE_URL } : {}),
+    ...(process.env.ANTHROPIC_API_KEY ? { anthropic_api_key: process.env.ANTHROPIC_API_KEY } : {}),
+    ...(process.env.ANTHROPIC_BASE_URL ? { anthropic_base_url: process.env.ANTHROPIC_BASE_URL } : {}),
   };
-  return merged as GBrainConfig;
+  applyProviderEnv(merged);
+  return merged;
 }
 
 export function saveConfig(config: GBrainConfig): void {

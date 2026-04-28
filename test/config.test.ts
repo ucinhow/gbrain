@@ -1,5 +1,6 @@
-import { describe, test, expect } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'fs';
+import { applyProviderEnv, loadConfig } from '../src/core/config.ts';
 
 // redactUrl is not exported, so we test it by reading the source and
 // reimplementing the regex to verify the pattern, then test via CLI
@@ -17,6 +18,38 @@ function redactUrl(url: string): string {
     '$1***$3',
   );
 }
+
+const ENV_KEYS = [
+  'DATABASE_URL',
+  'GBRAIN_DATABASE_URL',
+  'OPENAI_API_KEY',
+  'OPENAI_BASE_URL',
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_BASE_URL',
+] as const;
+
+const originalEnv = Object.fromEntries(
+  ENV_KEYS.map((key) => [key, process.env[key]]),
+) as Record<(typeof ENV_KEYS)[number], string | undefined>;
+
+function restoreEnv(): void {
+  for (const key of ENV_KEYS) {
+    const value = originalEnv[key];
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+}
+
+function envValue(key: string): string | undefined {
+  return process.env[key];
+}
+
+afterEach(() => {
+  restoreEnv();
+});
 
 describe('redactUrl', () => {
   test('redacts password in postgresql:// URL', () => {
@@ -59,5 +92,41 @@ describe('config source correctness', () => {
 
   test('redactUrl uses the correct regex pattern', () => {
     expect(configSource).toContain('postgresql:\\/\\/');
+  });
+});
+
+describe('provider config', () => {
+  test('applyProviderEnv hydrates SDK environment variables without overriding env', () => {
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_BASE_URL;
+    process.env.ANTHROPIC_API_KEY = 'env-anthropic-key';
+    delete process.env.ANTHROPIC_BASE_URL;
+
+    applyProviderEnv({
+      openai_api_key: 'config-openai-key',
+      openai_base_url: 'https://openai.example/v1',
+      anthropic_api_key: 'config-anthropic-key',
+      anthropic_base_url: 'https://anthropic.example',
+    });
+
+    expect(envValue('OPENAI_API_KEY')).toBe('config-openai-key');
+    expect(envValue('OPENAI_BASE_URL')).toBe('https://openai.example/v1');
+    expect(envValue('ANTHROPIC_API_KEY')).toBe('env-anthropic-key');
+    expect(envValue('ANTHROPIC_BASE_URL')).toBe('https://anthropic.example');
+  });
+
+  test('loadConfig includes provider base URLs from env', () => {
+    process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/gbrain_test';
+    process.env.OPENAI_API_KEY = 'env-openai-key';
+    process.env.OPENAI_BASE_URL = 'https://openai.example/v1';
+    process.env.ANTHROPIC_API_KEY = 'env-anthropic-key';
+    process.env.ANTHROPIC_BASE_URL = 'https://anthropic.example';
+
+    const config = loadConfig();
+
+    expect(config?.openai_api_key).toBe('env-openai-key');
+    expect(config?.openai_base_url).toBe('https://openai.example/v1');
+    expect(config?.anthropic_api_key).toBe('env-anthropic-key');
+    expect(config?.anthropic_base_url).toBe('https://anthropic.example');
   });
 });

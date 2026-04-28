@@ -16,6 +16,7 @@ import { embed } from '../embedding.ts';
 import { dedupResults } from './dedup.ts';
 import { autoDetectDetail } from './intent.ts';
 import { expandAnchors, hydrateChunks } from './two-pass.ts';
+import { loadConfig } from '../config.ts';
 
 const RRF_K = 60;
 const COMPILED_TRUTH_BOOST = 2.0;
@@ -63,6 +64,7 @@ export async function hybridSearch(
   query: string,
   opts?: HybridSearchOpts,
 ): Promise<SearchResult[]> {
+  loadConfig();
   const limit = opts?.limit || 20;
   const offset = opts?.offset || 0;
   const innerLimit = Math.min(limit * 2, MAX_SEARCH_LIMIT);
