@@ -35,6 +35,18 @@ function quoteLogValue(value: string): string {
   return JSON.stringify(value).replace(/\s+/g, ' ');
 }
 
+function jsonLogValue(value: unknown): string {
+  return JSON.stringify(value).replace(/\s+/g, ' ');
+}
+
+function headersForLog(request: Request): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const [key, value] of request.headers.entries()) {
+    headers[key] = value;
+  }
+  return headers;
+}
+
 function clientIp(request: Request): string {
   const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   return forwarded
@@ -55,7 +67,7 @@ async function withHttpRequestLog(request: Request, handler: () => Promise<Respo
   const session = shortSessionId(request.headers.get('mcp-session-id'));
   const auth = bearerToken(request) ? 'present' : 'missing';
   const ua = request.headers.get('user-agent') || '-';
-  logHttp(`request start id=${id} method=${request.method} path=${url.pathname} ip=${clientIp(request)} auth=${auth} session=${session} ua=${quoteLogValue(ua)}`);
+  logHttp(`request start id=${id} method=${request.method} path=${url.pathname} ip=${clientIp(request)} auth=${auth} session=${session} ua=${quoteLogValue(ua)} headers=${jsonLogValue(headersForLog(request))}`);
   try {
     const response = await handler();
     logHttp(`request end id=${id} status=${response.status} duration_ms=${Date.now() - started}`);
@@ -323,6 +335,7 @@ export async function startHttpMcpServer(
   const url = `http://${host}:${httpServer.port}${path}`;
   console.error(`Starting GBrain MCP server (streamable HTTP) at ${url}`);
   console.error(`Health check: http://${host}:${httpServer.port}/health`);
+  console.error('HTTP request logs are written to stderr with [mcp-http] prefix. Request headers are logged verbatim for debugging.');
 
   let shuttingDown = false;
   async function shutdown() {
