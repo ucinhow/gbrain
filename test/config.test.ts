@@ -26,6 +26,7 @@ const ENV_KEYS = [
   'OPENAI_BASE_URL',
   'ANTHROPIC_API_KEY',
   'ANTHROPIC_BASE_URL',
+  'GBRAIN_MCP_TOKEN',
 ] as const;
 
 const originalEnv = Object.fromEntries(
@@ -93,6 +94,10 @@ describe('config source correctness', () => {
   test('redactUrl uses the correct regex pattern', () => {
     expect(configSource).toContain('postgresql:\\/\\/');
   });
+
+  test('config show redacts token fields', () => {
+    expect(configSource).toContain("k.includes('token')");
+  });
 });
 
 describe('provider config', () => {
@@ -121,6 +126,7 @@ describe('provider config', () => {
     process.env.OPENAI_BASE_URL = 'https://openai.example/v1';
     process.env.ANTHROPIC_API_KEY = 'env-anthropic-key';
     process.env.ANTHROPIC_BASE_URL = 'https://anthropic.example';
+    process.env.GBRAIN_MCP_TOKEN = 'env-mcp-token';
 
     const config = loadConfig();
 
@@ -128,5 +134,6 @@ describe('provider config', () => {
     expect(config?.openai_base_url).toBe('https://openai.example/v1');
     expect(config?.anthropic_api_key).toBe('env-anthropic-key');
     expect(config?.anthropic_base_url).toBe('https://anthropic.example');
+    expect(config?.mcp_token).toBe('env-mcp-token');
   });
 });

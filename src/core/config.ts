@@ -31,6 +31,7 @@ export interface GBrainConfig {
   openai_base_url?: string;
   anthropic_api_key?: string;
   anthropic_base_url?: string;
+  mcp_token?: string;
   /**
    * Optional storage backend config (S3/Supabase/local). Shape matches
    * `StorageConfig` in `./storage.ts`. Typed as `unknown` here to avoid
@@ -82,6 +83,7 @@ export function loadConfig(): GBrainConfig | null {
     ...(process.env.OPENAI_BASE_URL ? { openai_base_url: process.env.OPENAI_BASE_URL } : {}),
     ...(process.env.ANTHROPIC_API_KEY ? { anthropic_api_key: process.env.ANTHROPIC_API_KEY } : {}),
     ...(process.env.ANTHROPIC_BASE_URL ? { anthropic_base_url: process.env.ANTHROPIC_BASE_URL } : {}),
+    ...(process.env.GBRAIN_MCP_TOKEN ? { mcp_token: process.env.GBRAIN_MCP_TOKEN } : {}),
   };
   applyProviderEnv(merged);
   return merged;

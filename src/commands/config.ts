@@ -24,7 +24,7 @@ export async function runConfig(engine: BrainEngine, args: string[]) {
     for (const [k, v] of Object.entries(config)) {
       const display = typeof v === 'string' && v.includes('postgresql://')
         ? redactUrl(v)
-        : typeof v === 'string' && (k.includes('key') || k.includes('secret'))
+        : typeof v === 'string' && (k.includes('key') || k.includes('secret') || k.includes('token'))
           ? '***'
           : v;
       console.log(`  ${k}: ${display}`);

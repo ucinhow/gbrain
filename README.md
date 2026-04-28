@@ -86,7 +86,7 @@ bun run src/commands/auth.ts create "claude-desktop"
 claude mcp add gbrain -t http https://your-brain.ngrok.app/mcp -H "Authorization: Bearer TOKEN"
 ```
 
-Per-client guides: [`docs/mcp/`](docs/mcp/DEPLOY.md). ChatGPT requires OAuth 2.1 (not yet implemented).
+For PGLite, set `GBRAIN_MCP_TOKEN` or `~/.gbrain/config.json` `mcp_token` before starting the HTTP server. Per-client guides: [`docs/mcp/`](docs/mcp/DEPLOY.md). ChatGPT requires OAuth 2.1 (not yet implemented).
 
 ### Using gbrain with GStack
 

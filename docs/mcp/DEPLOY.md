@@ -45,8 +45,8 @@ ngrok http 8787 --url your-brain.ngrok.app  # Hobby tier for fixed domain
 
 `gbrain serve` listens on `0.0.0.0:8787` by default. Override with
 `--host`, `--port`, and `--path` if needed. HTTP MCP requires `Authorization:
-Bearer <token>`; for PGLite, set `GBRAIN_MCP_TOKEN` because the Postgres
-`access_tokens` table is not available.
+Bearer <token>`. For PGLite, set `GBRAIN_MCP_TOKEN` or add `"mcp_token"` to
+`~/.gbrain/config.json` because the Postgres `access_tokens` table is not available.
 
 ### 2. Create access tokens
 

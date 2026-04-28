@@ -137,13 +137,13 @@ async function authenticateHttpRequest(engine: BrainEngine, request: Request): P
   const token = bearerToken(request);
   if (!token) return jsonRpcError(401, -32010, 'missing_auth: include Authorization: Bearer <token>');
 
-  const envToken = process.env.GBRAIN_MCP_TOKEN;
-  if (envToken) {
-    return safeEqual(token, envToken) ? null : jsonRpcError(401, -32011, 'invalid_token');
+  const configToken = loadConfig()?.mcp_token;
+  if (configToken) {
+    return safeEqual(token, configToken) ? null : jsonRpcError(401, -32011, 'invalid_token');
   }
 
   if (engine.kind !== 'postgres') {
-    return jsonRpcError(401, -32010, 'missing_auth: set GBRAIN_MCP_TOKEN for HTTP MCP with PGLite');
+    return jsonRpcError(401, -32010, 'missing_auth: set GBRAIN_MCP_TOKEN or ~/.gbrain/config.json mcp_token for HTTP MCP with PGLite');
   }
 
   const tokenHash = hashToken(token);
